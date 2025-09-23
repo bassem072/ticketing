@@ -87,7 +87,7 @@ const ShowOrder = ({ currentUser, order }) => {
             <h4>You have {timeLeft} seconds left to order</h4>
             {errors}
             <StripeCheckout
-              stripeKey="pk_test_51S9vOL22QDJfpxgumrAzomyyrHzDzPfZb79PBlBOACMvZIAwj0tF0n0bkC8DnIA7znPfzjpzxv2CcZSj7nJLPchH00HPx0tI1V"
+              stripeKey={process.env.STRIPE_KEY}
               token={(token) => onPay({ token: token.id })}
               amount={order.ticket.price * 100}
               email={currentUser.email}
