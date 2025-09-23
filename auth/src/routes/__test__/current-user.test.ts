@@ -17,5 +17,7 @@ it('No user', async () => {
   const response = await request(app)
     .get('/api/users/current-user')
     .send({})
-    .expect(401);
+    .expect(200);
+
+  expect(response.body.currentUser).toBeNull();
 });
