@@ -1,0 +1,6 @@
+{
+  "yaml.schemas": {
+    "kubernetes://schema/v1%40service": "file:///d%3A/Microservices/ticketing/infra/k8s/auth-mongo-depl.yaml"
+  },
+  "cSpell.words": ["bastickets"]
+}
