@@ -1,0 +1,44 @@
+name: deploy-auth
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Build & Push Docker Image
+        run: |
+          IMAGE=bassem2751959/auth:${{ github.sha }}
+          docker build -t $IMAGE ./auth
+          docker push $IMAGE
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+
+      # - name: Setup kubectl
+      #   uses: azure/setup-kubectl@v3
+      #   with:
+      #     version: 'v1.29.0' # match your cluster version
+
+      # - name: Configure Kube
+      #   run: |
+      #     echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > kubeconfig.yaml
+      #     export KUBECONFIG=kubeconfig.yaml
+      #     echo "KUBECONFIG=kubeconfig.yaml" >> $GITHUB_ENV
+
+      # - name: Update k8s manifests with new image
+      #   run: |
+      #     sed -i "s|image: bassem2751959/auth.*|image: $IMAGE|" infra/k8s/auth-deployment.yaml
+
+      # - name: Apply manifests
+      #   run: |
+      #     kubectl apply -f infra/k8s
