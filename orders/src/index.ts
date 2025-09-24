@@ -7,6 +7,8 @@ import { ExpirationCompleteListener } from './events/listeners/expiration-compla
 import { PaymentCreatedListener } from './events/listeners/payment-created-listener';
 
 const connectWithRetry = async () => {
+  console.log('Starting Up...');
+
   if (!process.env.JWT_KEY) {
     throw new Error('JWT_KEY must be defined');
   }
