@@ -1,0 +1,80 @@
+name: deploy-orders
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'orders/**'
+      - 'infra/k8s/orders-depl.yaml'
+      - '.github/workflows/deploy-orders.yml'
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check Directory & Manifest
+        run: |
+          if [ ! -d "./auth" ]; then echo "Directory ./auth not found"; exit 1; fi
+          if [ ! -f "./infra/k8s/auth-deployment.yaml" ]; then echo "Manifest file not found"; exit 1; fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        run: |
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+
+      # Docker caching for faster builds
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & Push Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./orders
+          push: true
+          tags: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/auth:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Save image reference
+        run: echo "IMAGE=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/auth:${{ github.sha }}" >> $GITHUB_ENV
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.29.0'
+
+      - name: Configure kubeconfig
+        run: |
+          aws eks update-kubeconfig --name my-cluster --region ${{ env.AWS_REGION }}
+
+      - name: Install yq
+        run: |
+          wget https://github.com/mikefarah/yq/releases/download/v4.35.2/yq_linux_amd64 -O /usr/bin/yq && chmod +x /usr/bin/yq
+
+      - name: Update manifests with new image
+        run: |
+          yq eval ".spec.template.spec.containers[0].image = env(IMAGE)" -i infra/k8s/orders-depl.yaml
+
+      - name: Validate Kubernetes Manifests
+        run: kubectl apply -f infra/k8s --dry-run=client
+
+      - name: Apply manifests
+        run: kubectl apply -f infra/k8s
+
+      - name: Verify rollout
+        run: kubectl rollout status deployment/orders-depl --timeout=60s
