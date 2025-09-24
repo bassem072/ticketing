@@ -6,7 +6,7 @@ on:
       - master
     paths:
       - 'auth/**'
-      - 'infra/k8s/auth-deployment.yaml'
+      - 'infra/k8s/auth-depl.yaml'
       - '.github/workflows/deploy-auth.yml'
 
 env:
@@ -68,7 +68,7 @@ jobs:
 
       - name: Update manifests with new image
         run: |
-          yq eval ".spec.template.spec.containers[0].image = env(IMAGE)" -i infra/k8s/auth-deployment.yaml
+          yq eval ".spec.template.spec.containers[0].image = env(IMAGE)" -i infra/k8s/auth-depl.yaml
 
       - name: Validate Kubernetes Manifests
         run: kubectl apply -f infra/k8s --dry-run=client
